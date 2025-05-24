@@ -1,9 +1,15 @@
 const { readFileSync } = require('fs');
 
-function gerarFaturaStr (fatura, pecas) {
+function gerarFaturaStr(fatura, pecas) {
 
   function getPeca(apresentacao) {
     return pecas[apresentacao.id];
+  }
+
+  function formatarMoeda(valor) {
+    return new Intl.NumberFormat("pt-BR",
+        { style: "currency", currency: "BRL",
+          minimumFractionDigits: 2 }).format(valor/100);
   }
 
   function calcularTotalApresentacao(apre) {
@@ -23,7 +29,7 @@ function gerarFaturaStr (fatura, pecas) {
       total += 300 * apre.audiencia;
       break;
     default:
-        throw new Error(`Peça desconhecia: ${getPeca(apre).tipo}`);
+      throw new Error(`Peça desconhecida: ${getPeca(apre).tipo}`);
     }
     return total;
   }
@@ -36,25 +42,28 @@ function gerarFaturaStr (fatura, pecas) {
     return creditos;
   }
 
-  function formatarMoeda(valor) {
-    return new Intl.NumberFormat("pt-BR",
-                      { style: "currency", currency: "BRL",
-                        minimumFractionDigits: 2 }).format(valor/100);
+  function calcularTotalFatura() {
+    let totalFatura = 0;
+    for (let apre of fatura.apresentacoes) {
+      totalFatura += calcularTotalApresentacao(apre);
+    }
+    return totalFatura;
   }
 
-  let totalFatura = 0;
-  let creditosVolume = 0; // Renomeado para evitar conflito com calcularCredito no loop
+  function calcularTotalCreditos() {
+    let creditosVolume = 0;
+    for (let apre of fatura.apresentacoes) {
+      creditosVolume += calcularCredito(apre);
+    }
+    return creditosVolume;
+  }
+  
   let faturaStr = `Fatura ${fatura.cliente}\n`;
-
   for (let apre of fatura.apresentacoes) {
-    let total = calcularTotalApresentacao(apre);
-    creditosVolume += calcularCredito(apre); 
-
-    faturaStr += `  ${getPeca(apre).nome}: ${formatarMoeda(total)} (${apre.audiencia} assentos)\n`;
-    totalFatura += total;
+    faturaStr += `  ${getPeca(apre).nome}: ${formatarMoeda(calcularTotalApresentacao(apre))} (${apre.audiencia} assentos)\n`;
   }
-  faturaStr += `Valor total: ${formatarMoeda(totalFatura)}\n`;
-  faturaStr += `Créditos acumulados: ${creditosVolume} \n`;
+  faturaStr += `Valor total: ${formatarMoeda(calcularTotalFatura())}\n`;
+  faturaStr += `Créditos acumulados: ${calcularTotalCreditos()} \n`;
   return faturaStr;
 }
 
